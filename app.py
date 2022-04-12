@@ -8,4 +8,4 @@ def main_page():
     return "This is main page."
 
 if __name__ == '__main__':
-    app.run(host = 'localhost',port=5000)
+    app.run(host = '3.34.209.23',port=5000)
