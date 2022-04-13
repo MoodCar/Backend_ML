@@ -7,7 +7,7 @@ app = Flask(__name__)
 # 서버 작동 여부 확인 Route ('/')
 @app.route('/')
 def server_check():
-    return jsonify("Server Linked!")
+    return jsonify(message="Server Linked!")
 
 # Emotion Prediction Route ('/prediction')
 @app.route('/prediction', methods = ['POST'])
