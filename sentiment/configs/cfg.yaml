@@ -1,0 +1,12 @@
+device : cuda:0
+model_path : train/pretrain.pth
+
+label_name : 
+  - 공포
+  - 놀람
+  - 분노
+  - 슬픔
+  - 중립
+  - 행복
+  - 혐오
+

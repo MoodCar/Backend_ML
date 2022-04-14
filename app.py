@@ -1,6 +1,7 @@
 # pip freeze > requirements.txt     // 패키지 목록 생성
 # pip install -r requirements.txt     // 패키지 목록 읽어서 설치
 from flask import Flask, request, jsonify, abort, make_response
+from sentiment import model
 
 app = Flask(__name__)
 
@@ -22,17 +23,10 @@ def prediction():
     elif len(content) > 10000 :
         abort(make_response(jsonify(message="Invalid Length of diary content"), 400))
     
-    # 한 문장씩 파싱해서 text 배열에 추가 ( 필요시 사용, 검증필요 )
-    text=content.replace('\n',' ').replace('  ',' ')
-    text=text.split('.')
-    #print(text)
     
+    
+    emotion = model.predict(content)
 
-    """    like this   
-
-
-    emotion = model.predict(text)
-    """
 
 
 
