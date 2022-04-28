@@ -1,5 +1,8 @@
-device : cuda:0
-model_path : train/pretrain.pth
+device : cpu
+model_path : null
+batch_size : 64
+max_len : 64
+
 
 label_name : 
   - 공포

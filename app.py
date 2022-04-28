@@ -1,9 +1,17 @@
 # pip freeze > requirements.txt     // 패키지 목록 생성
 # pip install -r requirements.txt     // 패키지 목록 읽어서 설치
 from flask import Flask, request, jsonify, abort, make_response
-from sentiment import model
+from sentiment import Model
+import yaml
 
 app = Flask(__name__)
+
+cfg = {}
+
+with open('./configs/cfg.yaml') as f:
+    cfg = yaml.load(f, Loader=yaml.FullLoader)
+    
+model = Model(cfg)
 
 # 서버 작동 여부 확인 Route ('/')
 @app.route('/')
@@ -27,10 +35,6 @@ def prediction():
     
     emotion = model.predict(content)
 
-
-
-
-    emotion = 'happy'
     return jsonify(emotion= emotion)
 
 @app.errorhandler(500)
