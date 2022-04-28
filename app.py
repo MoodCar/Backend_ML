@@ -1,5 +1,21 @@
 # pip freeze > requirements.txt     // 패키지 목록 생성
 # pip install -r requirements.txt     // 패키지 목록 읽어서 설치
+
+
+"""
+  $ python3 app.py: 파이썬 서버 구동시키기
+
+  $ Ctrl + Z: 프로세스 중지하기
+
+  $ bg: 백그라운드에서 서버를 다시 구동시키기
+
+  $ disown -h: 소유권 포기하기
+
+  $ netstat -nap | grep {port_num}
+
+  $ kill -9 {process_num}
+"""
+
 from flask import Flask, request, jsonify, abort, make_response
 from sentiment import Model
 import yaml
