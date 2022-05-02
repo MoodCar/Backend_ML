@@ -17,7 +17,7 @@
 """
 
 from flask import Flask, request, jsonify, abort, make_response
-from sentiment import Model
+from sentiment.model import Model
 import yaml
 
 app = Flask(__name__)

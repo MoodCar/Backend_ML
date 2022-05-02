@@ -8,7 +8,7 @@ class KeyWordExtractor:
         self.wordrank_extractor = KRWordRank(
             min_count=min_count,
             max_length=max_length,
-            verbose=False
+            verbose=True
         )
         
         self.beta = beta
@@ -19,19 +19,10 @@ class KeyWordExtractor:
         contents = normalize(contents, english=True, number=True)
         contents = split_sentences(contents, num_workers=1)
         
-        keywords, rank, graph = self.wordrank_extractor.extract(contents, self.beta, self.max_iter)
-        
-        hash_tag = []
-        
-        for word, _ in sorted(keywords.items(), key=lambda x:x[1], reverse=True)[:self.keyword_number]:
-            hash_tag.append(word)
+        keywords, _, _ = self.wordrank_extractor.extract(contents, self.beta, self.max_iter,self.keyword_number)
+       
+        return list(keywords.keys())
 
-            
-            
-        return hash_tag
-    
-    
-    
     
 
         
