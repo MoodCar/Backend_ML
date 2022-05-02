@@ -44,7 +44,8 @@ class Model:
             cfg['model_path'](str) : 모델 파라미터 파일 경로
             cfg['device'](str) : device(gpu or cpu)
             cfg['max_len'](int) : KoBERT input 사이즈
-            cfg['label_name'](list(str)) : 
+            cfg['label_name'](list(str)) : label name
+            cfg['num_wokrers'](int) : num_workers
         
         """
         bertmodel, self.vocab = get_pytorch_kobert_model(cachedir=".cache")
@@ -57,6 +58,8 @@ class Model:
         
         self.max_len = cfg['max_len']
         self.batch_size = cfg['batch_size']
+        
+        self.num_workers = cfg['num_workers']
         
         self.model = BERTClassifier(bertmodel).to(self.device)
         if cfg['model_path'] is not None:
@@ -84,10 +87,10 @@ class Model:
         # 오타 수정(필요할 경우에)
         x = self.okt.normalize(x)
         
-        x = split_sentences(x)
+        x = split_sentences(x, num_workers=self.num_workers)
         
         x = BERTDataset(x, self.tok, self.max_len)
-        dataloader = DataLoader(x, batch_size = self.batch_size)
+        dataloader = DataLoader(x, batch_size = self.batch_size, num_workers=self.num_workers)
         
         with torch.no_grad():
           total_out = torch.zeros(self.num_classes)

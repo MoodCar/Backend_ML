@@ -2,7 +2,7 @@ device : cpu
 model_path : null
 batch_size : 64
 max_len : 64
-
+num_workers : 1
 
 label_name : 
   - 공포
