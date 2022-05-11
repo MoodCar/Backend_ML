@@ -4,7 +4,7 @@ import gluonnlp as nlp
 import numpy as np
 
 
-class BERTDataset(torch.utils.data.Dataset):
+class KoBERTDataset(torch.utils.data.Dataset):
     def __init__(self, dataset, bert_tokenizer, max_len,
                  pad=True, pair=False):
         print(bert_tokenizer)

@@ -1,0 +1,10 @@
+device : cuda:0
+model_path : null
+batch_size : 64
+max_len : 64
+num_workers : 1
+model_name : SBERT
+idf_data_path : null
+
+num_keywords : 3
+

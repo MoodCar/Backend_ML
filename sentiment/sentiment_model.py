@@ -6,10 +6,13 @@ from torch.utils.data import Dataset, DataLoader
 import gluonnlp as nlp
 import numpy as np
 
-from dataset import BERTDataset
 
+from sentence_transformers import SentenceTransformer
 from kobert import get_tokenizer
 from kobert import get_pytorch_kobert_model
+from utils.dataset import KoBERTDataset
+from utils.classifier import KoBERTClassifier
+from utils.classifier import SBERTClassifier
 # from sklearn.model_selection import train_test_split
 
 from kss import split_sentences
@@ -19,7 +22,33 @@ from konlpy.tag import Okt
                                                          
 import random
 
-class Model:
+
+MODELS = [
+    'KoBERT',
+    'SBERT',
+]
+
+
+def get_sentiment_model_class(model_name):
+    """Return the algorithm class with the given name."""
+    if model_name not in globals():
+        raise NotImplementedError("Algorithm not found: {}".format(model_name))
+    return globals()[model_name]
+
+
+class SentimentModel:
+    def __init__(self, cfg):
+        self.label_name = cfg['label_name']
+        self.num_classes = len(self.label_name)
+        self.device = cfg['device']
+    
+    
+    def predict(self, x):
+        raise NotImplementedError
+
+
+
+class KoBERT(SentimentModel):
     """
     일기 감정 분석하는 모델
     
@@ -48,29 +77,25 @@ class Model:
             cfg['num_wokrers'](int) : num_workers
         
         """
+        super(KoBERT, self).__init__(cfg)
         bertmodel, self.vocab = get_pytorch_kobert_model(cachedir=".cache")
         tokenizer = get_tokenizer()
         self.tok = nlp.data.BERTSPTokenizer(tokenizer, self.vocab, lower=False)
         
         self.device = cfg['device']
-        self.label_name = cfg['label_name']
-        self.num_classes = len(self.label_name)
         
         self.max_len = cfg['max_len']
         self.batch_size = cfg['batch_size']
         
         self.num_workers = cfg['num_workers']
         
-        self.model = BERTClassifier(bertmodel).to(self.device)
+        self.model = KoBERTClassifier(bertmodel).to(self.device)
         if cfg['model_path'] is not None:
             self.model.load_state_dict(torch.load(cfg['model_path']), map_location=self.device)
             
         self.model.eval()
         
         self.okt = Okt()
-        
-        
-
     
     def predict(self, x):
         """
@@ -89,16 +114,16 @@ class Model:
         
         x = split_sentences(x, num_workers=self.num_workers)
         
-        x = BERTDataset(x, self.tok, self.max_len)
+        x = KoBERTDataset(x, self.tok, self.max_len)
         dataloader = DataLoader(x, batch_size = self.batch_size, num_workers=self.num_workers)
         
         with torch.no_grad():
-          total_out = torch.zeros(self.num_classes)
+          total_out = torch.zeros(self.num_classes).to(self.device)
           for token_ids, valid_length, segment_ids in dataloader:
               token_ids = token_ids.long().to(self.device)
               segment_ids = segment_ids.long().to(self.device)
               
-              out = self.model(token_ids, valid_length, segment_ids) 
+              _, out = self.model(token_ids, valid_length, segment_ids) 
               total_out += out.sum(dim=0)
         
         
@@ -108,34 +133,30 @@ class Model:
         return predict_emotion
     
     
-class BERTClassifier(nn.Module):
-    def __init__(self,
-                 bert,
-                 hidden_size = 768,
-                 num_classes=7,
-                 dr_rate=None,
-                 ):
-        super(BERTClassifier, self).__init__()
-        self.bert = bert
-        self.dr_rate = dr_rate
-                 
-        self.classifier = nn.Linear(hidden_size , num_classes)
-        # nn.init.xavier_uniform_(self.classifier.weight, 0.0)
-        if dr_rate is not None:
-            self.dropout = nn.Dropout(p=dr_rate)
-    
-    def gen_attention_mask(self, token_ids, valid_length):
-        attention_mask = torch.zeros_like(token_ids)
-        for i, v in enumerate(valid_length):
-            attention_mask[i][:v] = 1
-        return attention_mask.float()
-
-    def forward(self, token_ids, valid_length, segment_ids):
-        attention_mask = self.gen_attention_mask(token_ids, valid_length)
+class SBERT(SentimentModel):
+    def __init__(self, cfg):
+        super(SBERT, self).__init__(cfg)
+        # self.batch_size = cfg['batch_size']
+        bert = SentenceTransformer('sentence-transformers/xlm-r-100langs-bert-base-nli-stsb-mean-tokens')
         
-        _, pooler = self.bert(input_ids = token_ids, token_type_ids = segment_ids.long(), attention_mask = attention_mask.float().to(token_ids.device))
-        if self.dr_rate:
-            out = self.dropout(pooler)
-        out = pooler
-        return self.classifier(out)
-    
+        self.model = SBERTClassifier(bert, num_classes=self.num_classes, device=self.device)
+        self.num_workers = cfg['num_workers']
+        self.okt = Okt()
+        
+        self.model.eval()
+        
+    def predict(self, x):
+        
+        
+        x = self.okt.normalize(x)
+        x = split_sentences(x, num_workers=self.num_workers)
+  
+        with torch.no_grad():
+            _,out = self.model(x)
+        
+  
+        total_out = out.sum(dim=0)
+        
+        predict_emotion = self.label_name[total_out.argmax()]
+        
+        return predict_emotion
