@@ -3,8 +3,8 @@ model_path : null
 batch_size : 64
 max_len : 64
 num_workers : 1
-model_name : SBERT
-idf_data_path : null
+model_name : TfIdf
+idf_data_path : /content/drive/MyDrive/ML_Train/한국어_단발성_대화_데이터셋.xlsx - Sheet1.tsv
 
 num_keywords : 3
 

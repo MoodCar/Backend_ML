@@ -1,5 +1,5 @@
 device : cuda:0
-model_path : null
+model_path : /content/drive/MyDrive/model_weight/KoBERT/53_18_7class.pth
 batch_size : 64
 max_len : 64
 num_workers : 1

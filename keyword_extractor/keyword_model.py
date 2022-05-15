@@ -82,7 +82,7 @@ class TfIdf(KeywordModel):
     def init_tfidf(self, idf_data_path):
       dataset = nlp.data.TSVDataset(idf_data_path, field_indices=[0,1], num_discard_samples=1)
       # dataset = nlp.data.TSVDataset("/content/drive/MyDrive/캡디/한국어_단발성_대화_데이터셋.xlsx - Sheet1.tsv", field_indices=[0,1], num_discard_samples=1)
-      print([i for i,_ in dataset])
+
       self.tfidf.fit([i for i,_ in dataset])
 
 
@@ -152,7 +152,7 @@ class KoBERT(KeywordModel):
         self.model = KoBERTClassifier(bertmodel).to(self.device)
 
         if cfg['model_path'] is not None:
-            self.model.load_state_dict(torch.load(cfg['model_path']), map_location=self.device)
+            self.model.load_state_dict(torch.load(cfg['model_path'], map_location=self.device))
             
         self.model.eval()
         

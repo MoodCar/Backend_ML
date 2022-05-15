@@ -91,7 +91,7 @@ class KoBERT(SentimentModel):
         
         self.model = KoBERTClassifier(bertmodel).to(self.device)
         if cfg['model_path'] is not None:
-            self.model.load_state_dict(torch.load(cfg['model_path']), map_location=self.device)
+            self.model.load_state_dict(torch.load(cfg['model_path'], map_location=self.device))
             
         self.model.eval()
         
@@ -112,23 +112,37 @@ class KoBERT(SentimentModel):
         # 오타 수정(필요할 경우에)
         x = self.okt.normalize(x)
         
-        x = split_sentences(x, num_workers=self.num_workers)
+        parsing_sentences = split_sentences(x, num_workers=self.num_workers)
         
-        x = KoBERTDataset(x, self.tok, self.max_len)
+        x = KoBERTDataset(parsing_sentences, self.tok, self.max_len)
         dataloader = DataLoader(x, batch_size = self.batch_size, num_workers=self.num_workers)
         
         with torch.no_grad():
           total_out = torch.zeros(self.num_classes).to(self.device)
+          
+          print("문장 별 score")
           for token_ids, valid_length, segment_ids in dataloader:
               token_ids = token_ids.long().to(self.device)
               segment_ids = segment_ids.long().to(self.device)
               
               _, out = self.model(token_ids, valid_length, segment_ids) 
-              total_out += out.sum(dim=0)
+              total_out += out.mean(dim=0)
+              out = nn.Softmax(dim=1)(out)
+
+              for i in range(len(x)):
+                print("문장 : {0}".format(parsing_sentences[i]))
+                print({self.label_name[j]  : out[i][j].item() for j in range(self.num_classes)})
+                print(self.label_name[out[i].argmax()])
+                print()
         
-        
+        total_out /= len(dataloader)
+        total_out = nn.Softmax(dim=0)(total_out)
         predict_emotion = self.label_name[total_out.argmax()]
-    
+        predict_score = {self.label_name[i]  : total_out[i].item() for i in range(self.num_classes)}
+
+        print("총 score")
+        print(predict_score)
+        
     
         return predict_emotion
     
