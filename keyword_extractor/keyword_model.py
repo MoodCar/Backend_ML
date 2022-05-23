@@ -58,7 +58,7 @@ def get_keyword_model_class(model_name):
 
 class KeywordModel:
     def __init__(self, cfg):
-        self.num_keywords = cfg['num_keywords']
+        self.max_keywords = cfg['max_keywords']
         
     def predict(self, x):
         raise NotImplementedError
@@ -74,6 +74,7 @@ class TfIdf(KeywordModel):
         """  
         Args
         """
+        super().__init__(cfg)
         self.okt = Okt()
         self.tfidf = TfidfVectorizer(tokenizer=self.tokenizer)
         if cfg['idf_data_path'] is not None:
@@ -81,7 +82,6 @@ class TfIdf(KeywordModel):
 
     def init_tfidf(self, idf_data_path):
       dataset = nlp.data.TSVDataset(idf_data_path, field_indices=[0,1], num_discard_samples=1)
-      # dataset = nlp.data.TSVDataset("/content/drive/MyDrive/캡디/한국어_단발성_대화_데이터셋.xlsx - Sheet1.tsv", field_indices=[0,1], num_discard_samples=1)
 
       self.tfidf.fit([i for i,_ in dataset])
 
@@ -89,9 +89,9 @@ class TfIdf(KeywordModel):
 
     def tokenizer(self, raw_texts, pos=["Noun","Alpha","Number"], stopword=[]):
         p = self.okt.pos(raw_texts, 
-                norm=True,   # 정규화(normalization)
-                stem=True    # 어간추출(stemming)
-                )
+            norm=True,   # 정규화(normalization)
+            stem=True    # 어간추출(stemming)
+            )
         o = [word for word, tag in p if len(word) > 1 and tag in pos and word not in stopword]
         return o
 
@@ -110,8 +110,12 @@ class TfIdf(KeywordModel):
         x = self.okt.normalize(x)
         x = [x]
         
-        vectors = self.tfidf.fit_transform(x)
-        
+        try:
+            vectors = self.tfidf.fit_transform(x)
+        except:
+            return [None for i in range(self.max_keywords)]
+
+
         
         dict_of_tokens={i[1]:i[0] for i in self.tfidf.vocabulary_.items()}
 
@@ -124,8 +128,14 @@ class TfIdf(KeywordModel):
         
         keywords = []
 
-        for keyword, _ in sorted_tfidf_vectors[:3]:
-          keywords.append(keyword)
+        num_keywords = min(self.max_keywords, len(sorted_tfidf_vectors))
+
+        for keyword, _ in sorted_tfidf_vectors[:num_keywords]:
+            keywords.append(keyword)
+
+
+        for _ in range(self.max_keywords - num_keywords):
+            keywords.append(None)
         
     
     
@@ -142,7 +152,6 @@ class KoBERT(KeywordModel):
         
         
         self.device = cfg['device']
-        self.num_keywords = cfg['num_keywords']
         
         self.max_len = cfg['max_len']
         self.batch_size = cfg['batch_size']
@@ -176,9 +185,16 @@ class KoBERT(KeywordModel):
         
         tokenized_x = self.okt.pos(x)
         tokenized_nouns = ' '.join([word[0] for word in tokenized_x if word[1] == 'Noun' or word[1] == 'Number' or word[1] == 'Alpha'])
-        
+
+        if len(tokenized_nouns) == 0:
+            return [None for i in range(len(self.max_keywords))]
+
+
         n_gram_range = (0, 1)
-        count = CountVectorizer(ngram_range=n_gram_range).fit([tokenized_nouns])
+        try:
+            count = CountVectorizer(ngram_range=n_gram_range).fit([tokenized_nouns])
+        except:
+            return [None for i in range(self.max_keywords)]
         candidates = count.get_feature_names_out()
         x = split_sentences(x, num_workers=self.num_workers)
         
@@ -188,7 +204,7 @@ class KoBERT(KeywordModel):
         candidates_dataset = KoBERTDataset(candidates, self.tok, self.max_len)
         candidates_dataloader = DataLoader(candidates_dataset, batch_size = self.batch_size, num_workers=self.num_workers)
         
-        x_all_embeddings = []
+        x_all_embedding = torch.Tensor().to(self.device)
         candidates_all_embeddings = []
         with torch.no_grad():
             
@@ -197,11 +213,13 @@ class KoBERT(KeywordModel):
                 segment_ids = segment_ids.long().to(self.device)
                 
                 x_embedding, _ = self.model(token_ids, valid_length, segment_ids)
-                x_embedding = x_embedding.to('cpu')
-                x_embedding = np.asarray([emb.numpy() for emb in x_embedding])
+                # x_embedding = x_embedding.to('cpu')
+                # x_embedding = np.asarray([emb.numpy() for emb in x_embedding])
                 
-                x_all_embeddings.extend(x_embedding)
+                x_all_embedding = torch.cat((x_all_embedding, x_embedding), dim=0)
                 
+            x_all_embedding = x_all_embedding.mean(dim=0).unsqueeze(dim=0)
+            print(x_all_embedding.shape)
             for token_ids, valid_length, segment_ids in candidates_dataloader:
                 token_ids = token_ids.long().to(self.device)
                 segment_ids = segment_ids.long().to(self.device)
@@ -211,16 +229,22 @@ class KoBERT(KeywordModel):
                 candidates_embedding = np.asarray([emb.numpy() for emb in candidates_embedding])
                 
                 candidates_all_embeddings.extend(candidates_embedding)
-            
-        print(len(x_all_embeddings), len(candidates_all_embeddings))
 
-        distances = cosine_similarity(x_all_embeddings, candidates_all_embeddings)
-        keywords = [candidates[index] for index in distances.argsort()[0][-self.num_keywords:]]
+
+        x_all_embedding = np.asarray([emb.numpy() for emb in x_all_embedding.to('cpu')])
+        distances = cosine_similarity(x_all_embedding, candidates_all_embeddings)
+
+        num_keywords = min(self.max_keywords, len(distances))
+        keywords = [candidates[index] for index in distances.argsort()[0][-num_keywords:]]
+
+        for _ in range(self.max_keywords - num_keywords):
+            keywords.append(None)
 
 
         return keywords
 
 
+# Noe Use!
 class SBERT(KeywordModel):
     """
     Args:
@@ -271,7 +295,10 @@ class SBERT(KeywordModel):
         # tokenized_nouns = ' '.join([word[0] for word in tokenized_nouns])
         
         n_gram_range = (0, 1)
-        count = CountVectorizer(ngram_range=n_gram_range).fit([tokenized_nouns])
+        try:
+            count = CountVectorizer(ngram_range=n_gram_range).fit([tokenized_nouns])
+        except:
+            return [None for _ in range(self.max_keywords)]
         candidates = count.get_feature_names_out()
 
 
@@ -279,7 +306,10 @@ class SBERT(KeywordModel):
         candidate_embedding = self.model.encode(candidates)
         
         distances = cosine_similarity(doc_embedding, candidate_embedding)
-        
-        keywords = [candidates[index] for index in distances.argsort()[0][-self.num_keywords:]]
+        num_keywords = min(self.num_keywords, len(distances))
+        keywords = [candidates[index] for index in distances.argsort()[0][-num_keywords:]]
+
+        for _ in range(self.max_keywords - num_keywords):
+            keywords.append(None)
 
         return keywords
