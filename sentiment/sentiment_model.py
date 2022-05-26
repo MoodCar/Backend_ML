@@ -120,7 +120,6 @@ class KoBERT(SentimentModel):
         with torch.no_grad():
           total_out = torch.zeros(self.num_classes).to(self.device)
           
-          print("문장 별 score")
           for token_ids, valid_length, segment_ids in dataloader:
               token_ids = token_ids.long().to(self.device)
               segment_ids = segment_ids.long().to(self.device)
@@ -129,22 +128,21 @@ class KoBERT(SentimentModel):
               total_out += out.mean(dim=0)
               out = nn.Softmax(dim=1)(out)
 
-              for i in range(len(x)):
-                print("문장 : {0}".format(parsing_sentences[i]))
-                print({self.label_name[j]  : out[i][j].item() for j in range(self.num_classes)})
-                print(self.label_name[out[i].argmax()])
-                print()
+
         
         total_out /= len(dataloader)
         total_out = nn.Softmax(dim=0)(total_out)
-        predict_emotion = self.label_name[total_out.argmax()]
-        predict_score = {self.label_name[i]  : total_out[i].item() for i in range(self.num_classes)}
+        
+        score_label = ['fear_score', 'suprise_score', 'anger_score', 'sad_score', 'neutral_score', 'happy_score', 'disgust_score']
 
-        print("총 score")
-        print(predict_score)
+        
+        predict_emotion = self.label_name[total_out.argmax()]
+        predict_score = {score_label[i]  : round(total_out[i].item(), 2) for i in range(self.num_classes)}
+
+        
         
     
-        return predict_emotion
+        return predict_score, predict_emotion
     
     
 class SBERT(SentimentModel):

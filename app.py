@@ -17,7 +17,8 @@
 """
 
 from flask import Flask, request, jsonify, abort, make_response
-from sentiment.model import get_sentiment_model_class
+from sentiment.sentiment_model import get_sentiment_model_class
+from keyword_extractor.keyword_model import  get_keyword_model_class
 import yaml
 
 app = Flask(__name__)
@@ -30,7 +31,10 @@ with open('./keyword/configs/cfg.yaml') as f:
     keyword_cfg = yaml.load(f, Loader=yaml.FullLoader)
     
 sentiment_model_class = get_sentiment_model_class(sentiment_cfg['model_name'])
-sentiment_model = sentiment_model_class(cfg)
+sentiment_model = sentiment_model_class(sentiment_cfg)
+
+keyword_model_class = get_keyword_model_class(keyword_cfg['model_name'])
+keyword_model = keyword_model_class(keyword_cfg)
 
 # 서버 작동 여부 확인 Route ('/')
 @app.route('/')
@@ -52,9 +56,18 @@ def prediction():
     
     
     
-    emotion = sentiment_model.predict(content)
+    score, emotion = sentiment_model.predict(content)
+    tmp_keywords = keyword_model.predict(content)
+    
+    hashtag = {}
+    for i in range(len(tmp_keywords)):
+        hashtag['hashtag_{0}'.format(i)] = tmp_keywords[i]
+    
+    result = {'emotion' : emotion}
+    result.update(hashtag)
+    result.update(score)
 
-    return jsonify(emotion= emotion)
+    return jsonify(result)
 
 @app.errorhandler(500)
 def internal_server_error(e):
