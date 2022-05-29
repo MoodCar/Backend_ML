@@ -134,11 +134,12 @@ class KoBERT(SentimentModel):
         
         total_out /= len(dataloader)
         total_out = nn.Softmax(dim=0)(total_out)
+        total_out = total_out * 100
         
         score_label = ['fear_score', 'suprise_score', 'anger_score', 'sad_score', 'neutral_score', 'happy_score', 'disgust_score']
 
         tmp_score = [total_out[i].float().item() for i in range(self.num_classes)]
-        tmp_score = saferound(tmp_score, 2)
+        tmp_score = saferound(tmp_score, 1)
         
         predict_emotion = self.label_name[total_out.argmax()]
         predict_score = {score_label[i] : tmp_score[i] for i in range(self.num_classes)}
