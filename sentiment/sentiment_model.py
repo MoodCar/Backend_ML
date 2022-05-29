@@ -13,6 +13,8 @@ from kobert import get_pytorch_kobert_model
 from utils.dataset import KoBERTDataset
 from utils.classifier import KoBERTClassifier
 from utils.classifier import SBERTClassifier
+
+from iteround import saferound
 # from sklearn.model_selection import train_test_split
 
 from kss import split_sentences
@@ -135,10 +137,12 @@ class KoBERT(SentimentModel):
         
         score_label = ['fear_score', 'suprise_score', 'anger_score', 'sad_score', 'neutral_score', 'happy_score', 'disgust_score']
 
+        tmp_score = [total_out[i].float().item() for i in range(self.num_classes)]
+        tmp_score = saferound(tmp_score, 2)
         
         predict_emotion = self.label_name[total_out.argmax()]
-        predict_score = {score_label[i]  : round(total_out[i].item(), 2) for i in range(self.num_classes)}
-
+        predict_score = {score_label[i] : tmp_score[i] for i in range(self.num_classes)}
+        
         
         
     

@@ -185,7 +185,7 @@ class KoBERT(KeywordModel):
         
         tokenized_x = self.okt.pos(x)
         tokenized_nouns = ' '.join([word[0] for word in tokenized_x if word[1] == 'Noun' or word[1] == 'Number' or word[1] == 'Alpha'])
-
+        
         if len(tokenized_nouns) == 0:
             return [None for i in range(len(self.max_keywords))]
 
@@ -196,6 +196,7 @@ class KoBERT(KeywordModel):
         except:
             return [None for i in range(self.max_keywords)]
         candidates = count.get_feature_names_out()
+        
         x = split_sentences(x, num_workers=self.num_workers)
         
         x_datasets = KoBERTDataset(x, self.tok, self.max_len)
@@ -219,7 +220,7 @@ class KoBERT(KeywordModel):
                 x_all_embedding = torch.cat((x_all_embedding, x_embedding), dim=0)
                 
             x_all_embedding = x_all_embedding.mean(dim=0).unsqueeze(dim=0)
-            print(x_all_embedding.shape)
+
             for token_ids, valid_length, segment_ids in candidates_dataloader:
                 token_ids = token_ids.long().to(self.device)
                 segment_ids = segment_ids.long().to(self.device)
@@ -230,11 +231,14 @@ class KoBERT(KeywordModel):
                 
                 candidates_all_embeddings.extend(candidates_embedding)
 
+            
+
 
         x_all_embedding = np.asarray([emb.numpy() for emb in x_all_embedding.to('cpu')])
         distances = cosine_similarity(x_all_embedding, candidates_all_embeddings)
 
-        num_keywords = min(self.max_keywords, len(distances))
+
+        num_keywords = min(self.max_keywords, distances.shape[-1])
         keywords = [candidates[index] for index in distances.argsort()[0][-num_keywords:]]
 
         for _ in range(self.max_keywords - num_keywords):
@@ -306,7 +310,7 @@ class SBERT(KeywordModel):
         candidate_embedding = self.model.encode(candidates)
         
         distances = cosine_similarity(doc_embedding, candidate_embedding)
-        num_keywords = min(self.num_keywords, len(distances))
+        num_keywords = min(self.num_keywords, distances.shape[-1])
         keywords = [candidates[index] for index in distances.argsort()[0][-num_keywords:]]
 
         for _ in range(self.max_keywords - num_keywords):
