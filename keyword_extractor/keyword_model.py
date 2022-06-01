@@ -187,7 +187,7 @@ class KoBERT(KeywordModel):
         tokenized_nouns = ' '.join([word[0] for word in tokenized_x if word[1] == 'Noun' or word[1] == 'Number' or word[1] == 'Alpha'])
         
         if len(tokenized_nouns) == 0:
-            return [None for i in range(len(self.max_keywords))]
+            return [None for i in range(self.max_keywords)]
 
 
         n_gram_range = (0, 1)
