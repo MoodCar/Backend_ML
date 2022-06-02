@@ -1,5 +1,11 @@
 device : cuda:0
-model_path : /content/drive/MyDrive/model_weight/KoBERT/53_18_7class.pth
+model_path : /content/drive/MyDrive/model_weight/KoBERT/55_97.pth
+
+# Ensemble 이용할 경우 사용.
+# 경로는 model_weight/KOTE_44class.pth
+model2_path : null
+
+
 batch_size : 64
 max_len : 64
 num_workers : 1
