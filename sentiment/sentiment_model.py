@@ -28,6 +28,7 @@ import random
 MODELS = [
     'KoBERT',
     'SBERT',
+    'Ensemble',
 ]
 
 
@@ -65,16 +66,18 @@ class Ensemble(SentimentModel):
         batch_size : batch size
         label_name : 감정 종류
         model : KoBERT 모델
+        model2 : KoBERT 모델
         okt : 오타수정 해주는 라이브러리(속도는 느림)
     
     """
     def __init__(self, cfg):
         """
-        KoBERT 모델 설정하는 클래스
+        Ensemble 모델 설정하는 클래스
         
         Args
             cfg['batch_size'](int) : batch_size
             cfg['model_path'](str) : 모델 파라미터 파일 경로
+            cfg['model2_path'](str) : 모델 파라미터 파일 경로
             cfg['device'](str) : device(gpu or cpu)
             cfg['max_len'](int) : KoBERT input 사이즈
             cfg['label_name'](list(str)) : label name
